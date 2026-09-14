@@ -9,7 +9,8 @@ tasks = [
     {"id": 3, "title": "Publish on GitHub", "done": False}
 ]
 
-@app.get("/")
+
+@app.get("/", summary="API information")
 def home():
     return {
         "name": "Task API",
@@ -17,15 +18,18 @@ def home():
         "endpoints": ["/tasks"]
     }
 
-@app.get("/health")
+
+@app.get("/health", summary="Check API health")
 def health():
     return {"status": "ok"}
 
-@app.get("/tasks")
+
+@app.get("/tasks", summary="Get all tasks")
 def get_tasks():
     return tasks
 
-@app.get("/tasks/{id}")
+
+@app.get("/tasks/{id}", summary="Get a task by ID")
 def get_task(id: int):
     for task in tasks:
         if task["id"] == id:
@@ -36,7 +40,8 @@ def get_task(id: int):
         content={"error": f"Task {id} not found"}
     )
 
-@app.post("/tasks", status_code=201)
+
+@app.post("/tasks", summary="Create a new task", status_code=201)
 def create_task(data: dict):
     title = data.get("title")
 
@@ -57,7 +62,9 @@ def create_task(data: dict):
     tasks.append(new_task)
 
     return new_task
-@app.put("/tasks/{id}")
+
+
+@app.put("/tasks/{id}", summary="Update a task")
 def update_task(id: int, data: dict):
     for task in tasks:
         if task["id"] == id:
@@ -92,7 +99,7 @@ def update_task(id: int, data: dict):
     )
 
 
-@app.delete("/tasks/{id}", status_code=204)
+@app.delete("/tasks/{id}", summary="Delete a task", status_code=204)
 def delete_task(id: int):
     for task in tasks:
         if task["id"] == id:
