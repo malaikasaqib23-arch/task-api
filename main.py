@@ -57,3 +57,49 @@ def create_task(data: dict):
     tasks.append(new_task)
 
     return new_task
+@app.put("/tasks/{id}")
+def update_task(id: int, data: dict):
+    for task in tasks:
+        if task["id"] == id:
+
+            if not data:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "Update data is required"}
+                )
+
+            if "title" in data:
+                if not isinstance(data["title"], str) or not data["title"].strip():
+                    return JSONResponse(
+                        status_code=400,
+                        content={"error": "Title cannot be empty"}
+                    )
+                task["title"] = data["title"]
+
+            if "done" in data:
+                if not isinstance(data["done"], bool):
+                    return JSONResponse(
+                        status_code=400,
+                        content={"error": "Done must be true or false"}
+                    )
+                task["done"] = data["done"]
+
+            return task
+
+    return JSONResponse(
+        status_code=404,
+        content={"error": f"Task {id} not found"}
+    )
+
+
+@app.delete("/tasks/{id}", status_code=204)
+def delete_task(id: int):
+    for task in tasks:
+        if task["id"] == id:
+            tasks.remove(task)
+            return
+
+    return JSONResponse(
+        status_code=404,
+        content={"error": f"Task {id} not found"}
+    )
