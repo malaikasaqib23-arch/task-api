@@ -4,8 +4,10 @@ import sqlite3
 
 app = FastAPI()
 
+
 def get_db():
     return sqlite3.connect("tasks.db")
+
 
 def setup_database():
     conn = get_db()
@@ -39,6 +41,7 @@ def setup_database():
     conn.commit()
     conn.close()
 
+
 setup_database()
 
 
@@ -67,7 +70,11 @@ def get_tasks():
     conn.close()
 
     return [
-        {"id": row[0], "title": row[1], "done": bool(row[2])}
+        {
+            "id": row[0],
+            "title": row[1],
+            "done": bool(row[2])
+        }
         for row in rows
     ]
 
@@ -94,7 +101,7 @@ def get_task(id: int):
 
     return JSONResponse(
         status_code=404,
-        content={"error": f"Task {id} not found"}
+        content={"error": "Task not found"}
     )
 
 
@@ -152,7 +159,7 @@ def update_task(id: int, data: dict):
         conn.close()
         return JSONResponse(
             status_code=404,
-            content={"error": f"Task {id} not found"}
+            content={"error": "Task not found"}
         )
 
     title = row[1]
@@ -207,7 +214,7 @@ def delete_task(id: int):
         conn.close()
         return JSONResponse(
             status_code=404,
-            content={"error": f"Task {id} not found"}
+            content={"error": "Task not found"}
         )
 
     cursor.execute(
