@@ -1,13 +1,45 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+import sqlite3
 
 app = FastAPI()
 
-tasks = [
-    {"id": 1, "title": "Learn FastAPI", "done": False},
-    {"id": 2, "title": "Build CRUD API", "done": False},
-    {"id": 3, "title": "Publish on GitHub", "done": False}
-]
+def get_db():
+    return sqlite3.connect("tasks.db")
+
+def setup_database():
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            done BOOLEAN NOT NULL
+        )
+    """)
+
+    cursor.execute("SELECT COUNT(*) FROM tasks")
+    count = cursor.fetchone()[0]
+
+    if count == 0:
+        cursor.execute(
+            "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?)",
+            (1, "Learn FastAPI", False)
+        )
+        cursor.execute(
+            "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?)",
+            (2, "Build CRUD API", False)
+        )
+        cursor.execute(
+            "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?)",
+            (3, "Publish on GitHub", False)
+        )
+
+    conn.commit()
+    conn.close()
+
+setup_database()
 
 
 @app.get("/", summary="API information")
@@ -26,14 +58,39 @@ def health():
 
 @app.get("/tasks", summary="Get all tasks")
 def get_tasks():
-    return tasks
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, title, done FROM tasks")
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return [
+        {"id": row[0], "title": row[1], "done": bool(row[2])}
+        for row in rows
+    ]
 
 
 @app.get("/tasks/{id}", summary="Get a task by ID")
 def get_task(id: int):
-    for task in tasks:
-        if task["id"] == id:
-            return task
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id, title, done FROM tasks WHERE id = ?",
+        (id,)
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return {
+            "id": row[0],
+            "title": row[1],
+            "done": bool(row[2])
+        }
 
     return JSONResponse(
         status_code=404,
@@ -51,62 +108,112 @@ def create_task(data: dict):
             content={"error": "Title is required"}
         )
 
-    new_id = max(task["id"] for task in tasks) + 1
+    conn = get_db()
+    cursor = conn.cursor()
 
-    new_task = {
+    cursor.execute("SELECT MAX(id) FROM tasks")
+    max_id = cursor.fetchone()[0]
+    new_id = 1 if max_id is None else max_id + 1
+
+    cursor.execute(
+        "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?)",
+        (new_id, title, False)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {
         "id": new_id,
         "title": title,
         "done": False
     }
 
-    tasks.append(new_task)
-
-    return new_task
-
 
 @app.put("/tasks/{id}", summary="Update a task")
 def update_task(id: int, data: dict):
-    for task in tasks:
-        if task["id"] == id:
+    if not data:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Update data is required"}
+        )
 
-            if not data:
-                return JSONResponse(
-                    status_code=400,
-                    content={"error": "Update data is required"}
-                )
+    conn = get_db()
+    cursor = conn.cursor()
 
-            if "title" in data:
-                if not isinstance(data["title"], str) or not data["title"].strip():
-                    return JSONResponse(
-                        status_code=400,
-                        content={"error": "Title cannot be empty"}
-                    )
-                task["title"] = data["title"]
-
-            if "done" in data:
-                if not isinstance(data["done"], bool):
-                    return JSONResponse(
-                        status_code=400,
-                        content={"error": "Done must be true or false"}
-                    )
-                task["done"] = data["done"]
-
-            return task
-
-    return JSONResponse(
-        status_code=404,
-        content={"error": f"Task {id} not found"}
+    cursor.execute(
+        "SELECT id, title, done FROM tasks WHERE id = ?",
+        (id,)
     )
+
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Task {id} not found"}
+        )
+
+    title = row[1]
+    done = bool(row[2])
+
+    if "title" in data:
+        if not isinstance(data["title"], str) or not data["title"].strip():
+            conn.close()
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Title cannot be empty"}
+            )
+        title = data["title"]
+
+    if "done" in data:
+        if not isinstance(data["done"], bool):
+            conn.close()
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Done must be true or false"}
+            )
+        done = data["done"]
+
+    cursor.execute(
+        "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+        (title, done, id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": id,
+        "title": title,
+        "done": done
+    }
 
 
 @app.delete("/tasks/{id}", summary="Delete a task", status_code=204)
 def delete_task(id: int):
-    for task in tasks:
-        if task["id"] == id:
-            tasks.remove(task)
-            return
+    conn = get_db()
+    cursor = conn.cursor()
 
-    return JSONResponse(
-        status_code=404,
-        content={"error": f"Task {id} not found"}
+    cursor.execute(
+        "SELECT id FROM tasks WHERE id = ?",
+        (id,)
     )
+
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Task {id} not found"}
+        )
+
+    cursor.execute(
+        "DELETE FROM tasks WHERE id = ?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
