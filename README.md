@@ -1,12 +1,15 @@
 # Task API
 
-A simple in-memory To-Do CRUD API built with Python and FastAPI.
+A simple To-Do CRUD API built with Python, FastAPI, and SQLite.
+
+The API stores tasks in a SQLite database instead of keeping them only in memory. This means tasks remain saved even after the API server is restarted.
 
 ## Requirements
 
 - Python 3.10+
 - FastAPI
 - Uvicorn
+- SQLite
 
 ## Installation
 
@@ -27,6 +30,36 @@ Install dependencies:
 ```bash
 pip install fastapi uvicorn
 ```
+
+## Database
+
+The API uses SQLite for persistent task storage.
+
+The database file is:
+
+```text
+tasks.db
+```
+
+It is stored in the project folder:
+
+```text
+task-api/
+├── main.py
+├── tasks.db
+├── README.md
+└── swagger.png
+```
+
+The `tasks` table contains:
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | INTEGER | Unique task ID |
+| `title` | TEXT | Task title |
+| `done` | BOOLEAN | Whether the task is completed |
+
+The database and table are created automatically when the API starts if they do not already exist.
 
 ## Run the API
 
@@ -80,19 +113,25 @@ Example response:
 }
 ```
 
-## Test Output
+## SQLite Example
 
-Example `curl -i` response:
+The database can be opened using DB Browser for SQLite.
 
-```text
-HTTP/1.1 200 OK
-date: Wed, 16 Sep 2026 10:35:21 GMT
-server: uvicorn
-content-length: 144
-content-type: application/json
+Example query:
 
-[{"id":1,"title":"Learn FastAPI","done":false},{"id":2,"title":"Build CRUD API","done":false},{"id":3,"title":"Publish on GitHub","done":false}]
+```sql
+SELECT * FROM tasks;
 ```
+
+This query returns all tasks stored in the SQLite database.
+
+Another example:
+
+```sql
+SELECT * FROM tasks WHERE done = 1;
+```
+
+This returns only completed tasks.
 
 ## Swagger UI
 
@@ -101,3 +140,9 @@ The API can also be tested using FastAPI Swagger UI:
 http://127.0.0.1:8000/docs
 
 ![Swagger UI](swagger.png)
+
+## Database Screenshot
+
+The SQLite database was inspected using DB Browser for SQLite.
+
+![SQLite Database](database.png)
